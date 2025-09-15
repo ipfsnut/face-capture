@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Target } from 'lucide-react';
+import { Target, MoreVertical, X } from 'lucide-react';
 
 const CameraApp = () => {
   const [countdown, setCountdown] = useState(null);
@@ -7,19 +7,23 @@ const CameraApp = () => {
   const [cameras, setCameras] = useState([]);
   const [selectedMainCamera, setSelectedMainCamera] = useState('');
   const [selectedSecondCamera, setSelectedSecondCamera] = useState('');
+  const [menuOpen, setMenuOpen] = useState(false);
   const videoRef = useRef(null);
   const secondVideoRef = useRef(null);
   const streamRef = useRef(null);
   const secondStreamRef = useRef(null);
+  const menuRef = useRef(null);
   
   useEffect(() => {
     initializeCameras();
     window.addEventListener('keydown', handleKeyPress);
+    window.addEventListener('mousedown', handleClickOutside);
     
     return () => {
       stopCamera();
       stopSecondCamera();
       window.removeEventListener('keydown', handleKeyPress);
+      window.removeEventListener('mousedown', handleClickOutside);
     };
   }, []);
 
@@ -121,6 +125,15 @@ const CameraApp = () => {
     if (event.key === 'Enter' && !countdown) {
       startCountdown();
     }
+    if (event.key === 'Escape' && menuOpen) {
+      setMenuOpen(false);
+    }
+  };
+
+  const handleClickOutside = (event) => {
+    if (menuRef.current && !menuRef.current.contains(event.target)) {
+      setMenuOpen(false);
+    }
   };
 
   const startCountdown = () => {
@@ -138,6 +151,9 @@ const CameraApp = () => {
   };
 
   const capturePhoto = () => {
+    const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+    
+    // Capture from main camera
     const canvas = document.createElement('canvas');
     canvas.width = videoRef.current.videoWidth;
     canvas.height = videoRef.current.videoHeight;
@@ -145,8 +161,7 @@ const CameraApp = () => {
     context.drawImage(videoRef.current, 0, 0);
     
     canvas.toBlob((blob) => {
-      const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
-      const filename = `capture-${timestamp}.jpg`;
+      const filename = `capture-main-${timestamp}.jpg`;
       
       const link = document.createElement('a');
       link.href = URL.createObjectURL(blob);
@@ -155,6 +170,26 @@ const CameraApp = () => {
       
       URL.revokeObjectURL(link.href);
     }, 'image/jpeg', 0.95);
+    
+    // Capture from second camera if in dual mode
+    if (dualCameraMode && secondVideoRef.current && secondStreamRef.current) {
+      const secondCanvas = document.createElement('canvas');
+      secondCanvas.width = secondVideoRef.current.videoWidth;
+      secondCanvas.height = secondVideoRef.current.videoHeight;
+      const secondContext = secondCanvas.getContext('2d');
+      secondContext.drawImage(secondVideoRef.current, 0, 0);
+      
+      secondCanvas.toBlob((blob) => {
+        const filename = `capture-field-${timestamp}.jpg`;
+        
+        const link = document.createElement('a');
+        link.href = URL.createObjectURL(blob);
+        link.download = filename;
+        link.click();
+        
+        URL.revokeObjectURL(link.href);
+      }, 'image/jpeg', 0.95);
+    }
   };
 
   return (
@@ -185,95 +220,181 @@ const CameraApp = () => {
         }}
       />
       
-      {/* Camera controls */}
-      <div style={{
+      {/* Menu button and dropdown */}
+      <div ref={menuRef} style={{
         position: 'absolute',
         top: '20px',
-        right: '20px',
-        display: 'flex',
-        flexDirection: 'column',
-        gap: '15px',
-        color: 'white',
-        fontSize: '1rem',
-        backgroundColor: 'rgba(0, 0, 0, 0.5)',
-        padding: '15px',
-        borderRadius: '8px'
+        right: '20px'
       }}>
-        {/* Main camera selector */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
-          <label style={{ fontSize: '0.875rem', color: '#ccc' }}>Main Camera (Capture)</label>
-          <select
-            value={selectedMainCamera}
-            onChange={(e) => setSelectedMainCamera(e.target.value)}
-            style={{
-              padding: '5px',
-              borderRadius: '4px',
-              backgroundColor: '#333',
-              color: 'white',
-              border: '1px solid #555',
-              cursor: 'pointer'
-            }}
-          >
-            {cameras.map((camera, index) => (
-              <option key={camera.deviceId} value={camera.deviceId}>
-                {camera.label || `Camera ${index + 1}`}
-              </option>
-            ))}
-          </select>
-        </div>
+        {/* Menu button */}
+        <button
+          onClick={() => setMenuOpen(!menuOpen)}
+          style={{
+            backgroundColor: 'rgba(255, 255, 255, 0.1)',
+            border: '1px solid rgba(255, 255, 255, 0.3)',
+            borderRadius: '8px',
+            padding: '10px',
+            cursor: 'pointer',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            transition: 'background-color 0.2s',
+            ':hover': {
+              backgroundColor: 'rgba(255, 255, 255, 0.2)'
+            }
+          }}
+          onMouseEnter={(e) => e.target.style.backgroundColor = 'rgba(255, 255, 255, 0.2)'}
+          onMouseLeave={(e) => e.target.style.backgroundColor = 'rgba(255, 255, 255, 0.1)'}
+        >
+          {menuOpen ? <X color="white" size={24} /> : <MoreVertical color="white" size={24} />}
+        </button>
 
-        {/* Second camera selector */}
-        {cameras.length > 1 && (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
-            <label style={{ fontSize: '0.875rem', color: '#ccc' }}>Second Camera (Display)</label>
-            <select
-              value={selectedSecondCamera}
-              onChange={(e) => setSelectedSecondCamera(e.target.value)}
-              disabled={!dualCameraMode}
-              style={{
-                padding: '5px',
-                borderRadius: '4px',
-                backgroundColor: dualCameraMode ? '#333' : '#222',
-                color: dualCameraMode ? 'white' : '#666',
-                border: '1px solid #555',
-                cursor: dualCameraMode ? 'pointer' : 'not-allowed'
-              }}
+        {/* Dropdown menu */}
+        {menuOpen && (
+          <div style={{
+            position: 'absolute',
+            top: '50px',
+            right: '0',
+            minWidth: '280px',
+            backgroundColor: 'rgba(20, 20, 20, 0.95)',
+            backdropFilter: 'blur(10px)',
+            border: '1px solid rgba(255, 255, 255, 0.2)',
+            borderRadius: '12px',
+            padding: '20px',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '20px',
+            color: 'white',
+            fontSize: '1rem',
+            boxShadow: '0 10px 30px rgba(0, 0, 0, 0.5)'
+          }}>
+            <h3 style={{ 
+              margin: '0 0 10px 0', 
+              fontSize: '1.2rem', 
+              fontWeight: '600',
+              borderBottom: '1px solid rgba(255, 255, 255, 0.1)',
+              paddingBottom: '10px'
+            }}>
+              Camera Settings
+            </h3>
+
+            {/* Main camera selector */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+              <label style={{ fontSize: '0.9rem', color: '#ccc', fontWeight: '500' }}>
+                Main Camera (Capture)
+              </label>
+              <select
+                value={selectedMainCamera}
+                onChange={(e) => setSelectedMainCamera(e.target.value)}
+                style={{
+                  padding: '8px 12px',
+                  borderRadius: '6px',
+                  backgroundColor: 'rgba(255, 255, 255, 0.1)',
+                  color: 'white',
+                  border: '1px solid rgba(255, 255, 255, 0.2)',
+                  cursor: 'pointer',
+                  fontSize: '0.95rem',
+                  outline: 'none'
+                }}
+              >
+                {cameras.map((camera, index) => (
+                  <option key={camera.deviceId} value={camera.deviceId} style={{ backgroundColor: '#1a1a1a' }}>
+                    {camera.label || `Camera ${index + 1}`}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {/* Second camera selector */}
+            {cameras.length > 1 && (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                <label style={{ fontSize: '0.9rem', color: '#ccc', fontWeight: '500' }}>
+                  Field Camera (Display)
+                </label>
+                <select
+                  value={selectedSecondCamera}
+                  onChange={(e) => setSelectedSecondCamera(e.target.value)}
+                  disabled={!dualCameraMode}
+                  style={{
+                    padding: '8px 12px',
+                    borderRadius: '6px',
+                    backgroundColor: dualCameraMode ? 'rgba(255, 255, 255, 0.1)' : 'rgba(255, 255, 255, 0.05)',
+                    color: dualCameraMode ? 'white' : '#666',
+                    border: '1px solid rgba(255, 255, 255, 0.2)',
+                    cursor: dualCameraMode ? 'pointer' : 'not-allowed',
+                    fontSize: '0.95rem',
+                    outline: 'none',
+                    opacity: dualCameraMode ? 1 : 0.5
+                  }}
+                >
+                  {cameras.map((camera, index) => (
+                    <option key={camera.deviceId} value={camera.deviceId} style={{ backgroundColor: '#1a1a1a' }}>
+                      {camera.label || `Camera ${index + 1}`}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
+
+            {/* Dual camera mode toggle */}
+            <label style={{ 
+              cursor: cameras.length > 1 ? 'pointer' : 'not-allowed', 
+              display: 'flex', 
+              alignItems: 'center', 
+              gap: '12px',
+              padding: '12px',
+              backgroundColor: 'rgba(255, 255, 255, 0.05)',
+              borderRadius: '8px',
+              transition: 'background-color 0.2s'
+            }}
+            onMouseEnter={(e) => cameras.length > 1 && (e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.1)')}
+            onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.05)'}
             >
-              {cameras.map((camera, index) => (
-                <option key={camera.deviceId} value={camera.deviceId}>
-                  {camera.label || `Camera ${index + 1}`}
-                </option>
-              ))}
-            </select>
-          </div>
-        )}
+              <input
+                type="checkbox"
+                checked={dualCameraMode}
+                onChange={(e) => setDualCameraMode(e.target.checked)}
+                disabled={cameras.length < 2}
+                style={{
+                  width: '20px',
+                  height: '20px',
+                  cursor: cameras.length < 2 ? 'not-allowed' : 'pointer',
+                  accentColor: '#4CAF50'
+                }}
+              />
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                <span style={{ fontSize: '0.95rem', fontWeight: '500' }}>Dual Camera Mode</span>
+                <span style={{ fontSize: '0.75rem', color: '#999' }}>
+                  {cameras.length < 2 
+                    ? 'Requires 2+ cameras' 
+                    : 'Captures from both cameras'}
+                </span>
+              </div>
+            </label>
+            
+            {cameras.length < 2 && (
+              <div style={{ 
+                fontSize: '0.8rem', 
+                color: '#ff9800', 
+                backgroundColor: 'rgba(255, 152, 0, 0.1)',
+                padding: '10px',
+                borderRadius: '6px',
+                border: '1px solid rgba(255, 152, 0, 0.3)'
+              }}>
+                ⚠️ Only one camera detected
+              </div>
+            )}
 
-        {/* Dual camera mode toggle */}
-        <label style={{ 
-          cursor: cameras.length > 1 ? 'pointer' : 'not-allowed', 
-          display: 'flex', 
-          alignItems: 'center', 
-          gap: '10px',
-          marginTop: '10px'
-        }}>
-          <input
-            type="checkbox"
-            checked={dualCameraMode}
-            onChange={(e) => setDualCameraMode(e.target.checked)}
-            disabled={cameras.length < 2}
-            style={{
-              width: '20px',
-              height: '20px',
-              cursor: cameras.length < 2 ? 'not-allowed' : 'pointer'
-            }}
-          />
-          <span>Dual Camera Mode</span>
-        </label>
-        
-        {cameras.length < 2 && (
-          <span style={{ fontSize: '0.75rem', color: '#888', fontStyle: 'italic' }}>
-            Only one camera detected
-          </span>
+            <div style={{
+              marginTop: '10px',
+              paddingTop: '15px',
+              borderTop: '1px solid rgba(255, 255, 255, 0.1)',
+              fontSize: '0.8rem',
+              color: '#666'
+            }}>
+              Press ESC to close menu
+            </div>
+          </div>
         )}
       </div>
 
