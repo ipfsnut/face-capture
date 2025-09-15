@@ -150,6 +150,17 @@ const CameraApp = () => {
     }, 1000);
   };
 
+  const downloadImage = (blob, filename) => {
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.download = filename;
+    link.style.display = 'none';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    setTimeout(() => URL.revokeObjectURL(link.href), 100);
+  };
+
   const capturePhoto = () => {
     const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
     
@@ -162,33 +173,53 @@ const CameraApp = () => {
     
     canvas.toBlob((blob) => {
       const filename = `capture-main-${timestamp}.jpg`;
-      
-      const link = document.createElement('a');
-      link.href = URL.createObjectURL(blob);
-      link.download = filename;
-      link.click();
-      
-      URL.revokeObjectURL(link.href);
+      downloadImage(blob, filename);
     }, 'image/jpeg', 0.95);
     
-    // Capture from second camera if in dual mode
+    // Capture from second camera simultaneously if in dual mode
     if (dualCameraMode && secondVideoRef.current && secondStreamRef.current) {
+      console.log('Dual camera mode active, capturing second camera...');
+      console.log('Second video state:', {
+        exists: !!secondVideoRef.current,
+        readyState: secondVideoRef.current?.readyState,
+        paused: secondVideoRef.current?.paused,
+        width: secondVideoRef.current?.videoWidth,
+        height: secondVideoRef.current?.videoHeight
+      });
+      
       const secondCanvas = document.createElement('canvas');
       secondCanvas.width = secondVideoRef.current.videoWidth;
       secondCanvas.height = secondVideoRef.current.videoHeight;
+      
+      if (secondCanvas.width === 0 || secondCanvas.height === 0) {
+        console.error('Second camera video dimensions are invalid:', {
+          width: secondCanvas.width,
+          height: secondCanvas.height
+        });
+        return;
+      }
+      
+      console.log('Creating second camera capture with dimensions:', secondCanvas.width, 'x', secondCanvas.height);
+      
       const secondContext = secondCanvas.getContext('2d');
       secondContext.drawImage(secondVideoRef.current, 0, 0);
       
       secondCanvas.toBlob((blob) => {
+        if (!blob) {
+          console.error('Failed to create blob from second camera');
+          return;
+        }
+        
         const filename = `capture-field-${timestamp}.jpg`;
-        
-        const link = document.createElement('a');
-        link.href = URL.createObjectURL(blob);
-        link.download = filename;
-        link.click();
-        
-        URL.revokeObjectURL(link.href);
+        console.log('Saving second camera capture as:', filename);
+        downloadImage(blob, filename);
       }, 'image/jpeg', 0.95);
+    } else {
+      console.log('Second camera capture skipped:', {
+        dualCameraMode,
+        hasSecondVideoRef: !!secondVideoRef.current,
+        hasSecondStream: !!secondStreamRef.current
+      });
     }
   };
 
@@ -411,11 +442,11 @@ const CameraApp = () => {
             autoPlay
             playsInline
             style={{
-              width: '200px',
-              height: '200px',
+              width: '400px',
+              height: '400px',
               borderRadius: '50%',
               objectFit: 'cover',
-              border: '2px solid white'
+              border: '3px solid white'
             }}
           />
         ) : (
