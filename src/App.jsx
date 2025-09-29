@@ -31,6 +31,8 @@ const CameraApp = () => {
   const secondVideoRef = useRef(null);
   const streamRef = useRef(null);
   const secondStreamRef = useRef(null);
+  const configMainVideoRef = useRef(null);
+  const configSecondVideoRef = useRef(null);
 
   const effortLevels = {
     'M': { low: 'Dot 2', high: 'Dot 3' },
@@ -61,9 +63,17 @@ const CameraApp = () => {
       
       const stream = await navigator.mediaDevices.getUserMedia(constraints);
       streamRef.current = stream;
+      
+      // Set stream to main video ref
       if (videoRef.current) {
         videoRef.current.srcObject = stream;
         console.log('Main camera stream set');
+      }
+      
+      // Also set to config preview if it exists
+      if (configMainVideoRef.current) {
+        configMainVideoRef.current.srcObject = stream;
+        console.log('Config main camera preview set');
       }
     } catch (err) {
       console.error('Error accessing main camera:', err);
@@ -82,8 +92,17 @@ const CameraApp = () => {
       
       const stream = await navigator.mediaDevices.getUserMedia(constraints);
       secondStreamRef.current = stream;
+      
+      // Set stream to main second video ref
       if (secondVideoRef.current) {
         secondVideoRef.current.srcObject = stream;
+        console.log('Second camera stream set');
+      }
+      
+      // Also set to config preview if it exists
+      if (configSecondVideoRef.current) {
+        configSecondVideoRef.current.srcObject = stream;
+        console.log('Config second camera preview set');
       }
     } catch (err) {
       console.error('Error accessing second camera:', err);
@@ -464,9 +483,10 @@ const CameraApp = () => {
             backgroundColor: '#222'
           }}>
             <video
-              ref={videoRef}
+              ref={configMainVideoRef}
               autoPlay
               playsInline
+              muted
               style={{
                 width: '100%',
                 height: '300px',
@@ -506,9 +526,10 @@ const CameraApp = () => {
             backgroundColor: '#222'
           }}>
             <video
-              ref={secondVideoRef}
+              ref={configSecondVideoRef}
               autoPlay
               playsInline
+              muted
               style={{
                 width: '100%',
                 height: '300px',
@@ -656,9 +677,14 @@ const CameraApp = () => {
       </div>
       
       <video
-        ref={secondVideoRef}
         autoPlay
         playsInline
+        muted
+        ref={(el) => {
+          if (el && secondStreamRef.current) {
+            el.srcObject = secondStreamRef.current;
+          }
+        }}
         style={{
           width: '500px',
           height: '500px',
@@ -802,8 +828,22 @@ const CameraApp = () => {
         </div>
       )}
 
+      {/* Hidden video elements for capture - always present */}
       <video
         ref={videoRef}
+        autoPlay
+        playsInline
+        muted
+        style={{
+          position: 'fixed',
+          top: '-9999px',
+          left: '-9999px',
+          width: '1px',
+          height: '1px'
+        }}
+      />
+      <video
+        ref={secondVideoRef}
         autoPlay
         playsInline
         muted
