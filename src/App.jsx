@@ -1,5 +1,5 @@
-import React, { useState, useRef, useEffect } from 'react';
-import { Target, MoreVertical, Settings, Camera } from 'lucide-react';
+import { useState, useRef, useEffect, useCallback } from 'react';
+import { Target, MoreVertical, Settings } from 'lucide-react';
 import JSZip from 'jszip';
 
 const CameraApp = () => {
@@ -49,7 +49,7 @@ const CameraApp = () => {
       stopSecondCamera();
       window.removeEventListener('keydown', handleKeyPress);
     };
-  }, []);
+  }, [handleKeyPress]);
 
   useEffect(() => {
     if (cameras.length > 0 && !selectedMainCamera) {
@@ -58,13 +58,13 @@ const CameraApp = () => {
     if (cameras.length > 1 && !selectedSecondCamera) {
       setSelectedSecondCamera(cameras[1].deviceId);
     }
-  }, [cameras]);
+  }, [cameras, selectedMainCamera, selectedSecondCamera]);
 
   useEffect(() => {
     if (selectedMainCamera) {
       startCamera();
     }
-  }, [selectedMainCamera]);
+  }, [selectedMainCamera, startCamera]);
 
   useEffect(() => {
     if (dualCameraMode && selectedSecondCamera && cameras.length > 1) {
@@ -72,7 +72,7 @@ const CameraApp = () => {
     } else {
       stopSecondCamera();
     }
-  }, [dualCameraMode, selectedSecondCamera, cameras.length]);
+  }, [dualCameraMode, selectedSecondCamera, cameras.length, startSecondCamera]);
 
   const initializeCameras = async () => {
     try {
@@ -86,7 +86,7 @@ const CameraApp = () => {
     }
   };
 
-  const startCamera = async () => {
+  const startCamera = useCallback(async () => {
     try {
       stopCamera();
       const constraints = selectedMainCamera 
@@ -102,9 +102,9 @@ const CameraApp = () => {
     } catch (err) {
       console.error('Error accessing main camera:', err);
     }
-  };
+  }, [selectedMainCamera]);
 
-  const startSecondCamera = async () => {
+  const startSecondCamera = useCallback(async () => {
     try {
       stopSecondCamera();
       if (!selectedSecondCamera) return;
@@ -122,7 +122,7 @@ const CameraApp = () => {
     } catch (err) {
       console.error('Error accessing second camera:', err);
     }
-  };
+  }, [selectedSecondCamera]);
 
   const stopCamera = () => {
     if (streamRef.current) {
@@ -136,13 +136,13 @@ const CameraApp = () => {
     }
   };
 
-  const handleKeyPress = (event) => {
+  const handleKeyPress = useCallback((event) => {
     if (event.key === 'Enter') {
       if (experimentState === 'neutral-ready') {
         startNeutralCountdown();
       }
     }
-  };
+  }, [experimentState, startNeutralCountdown]);
 
   const handleGenderSelection = (selectedGender) => {
     console.log('Gender selected:', selectedGender);
@@ -157,13 +157,13 @@ const CameraApp = () => {
     }, 3000);
   };
 
-  const startNeutralCountdown = (selectedGender) => {
+  const startNeutralCountdown = useCallback((selectedGender) => {
     setExperimentState('neutral-countdown');
     // Give camera a moment to be ready, then capture
     setTimeout(() => {
       captureNeutralPhoto(selectedGender);
     }, 1000);
-  };
+  }, []);
 
   const captureNeutralPhoto = (selectedGender) => {
     console.log('Attempting to capture neutral photo...');
