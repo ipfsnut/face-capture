@@ -33,6 +33,7 @@ const CameraApp = () => {
   const secondStreamRef = useRef(null);
   const configMainVideoRef = useRef(null);
   const configSecondVideoRef = useRef(null);
+  const taskVideoRef = useRef(null);
 
   const effortLevels = {
     'M': { low: 'Dot 2', high: 'Dot 3' },
@@ -93,16 +94,22 @@ const CameraApp = () => {
       const stream = await navigator.mediaDevices.getUserMedia(constraints);
       secondStreamRef.current = stream;
       
-      // Set stream to main second video ref
+      // Set stream to hidden second video ref for capture
       if (secondVideoRef.current) {
         secondVideoRef.current.srcObject = stream;
-        console.log('Second camera stream set');
+        console.log('Second camera stream set for capture');
       }
       
-      // Also set to config preview if it exists
+      // Set to config preview if it exists
       if (configSecondVideoRef.current) {
         configSecondVideoRef.current.srcObject = stream;
         console.log('Config second camera preview set');
+      }
+      
+      // Set to task display if it exists
+      if (taskVideoRef.current) {
+        taskVideoRef.current.srcObject = stream;
+        console.log('Task second camera display set');
       }
     } catch (err) {
       console.error('Error accessing second camera:', err);
@@ -353,6 +360,19 @@ const CameraApp = () => {
       window.removeEventListener('keydown', handleKeyPress);
     };
   }, [handleKeyPress]);
+
+  // Ensure second camera is properly connected when showing task
+  useEffect(() => {
+    if (experimentState === 'task') {
+      if (!secondStreamRef.current && selectedSecondCamera) {
+        console.log('Task state: no second stream, starting second camera');
+        startSecondCamera();
+      } else if (secondStreamRef.current && taskVideoRef.current) {
+        console.log('Task state: connecting existing stream to task video');
+        taskVideoRef.current.srcObject = secondStreamRef.current;
+      }
+    }
+  }, [experimentState, selectedSecondCamera, startSecondCamera]);
 
   useEffect(() => {
     if (experimentState === 'complete' && capturedImages.length > 0) {
@@ -660,39 +680,36 @@ const CameraApp = () => {
 
   const renderTask = () => (
     <div style={{
-      display: 'flex',
-      flexDirection: 'column',
-      alignItems: 'center',
-      justifyContent: 'space-between',
-      height: '100vh',
-      padding: '50px 0'
-    }}>
-      <div style={{
-        color: 'white',
-        fontSize: '2.5rem',
-        fontWeight: 'bold',
-        marginBottom: '30px'
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        height: '100vh',
+        padding: '50px 0'
       }}>
-        Squeeze to {targetDot} dot
-      </div>
-      
-      <video
-        autoPlay
-        playsInline
-        muted
-        ref={(el) => {
-          if (el && secondStreamRef.current) {
-            el.srcObject = secondStreamRef.current;
-          }
-        }}
-        style={{
-          width: '500px',
-          height: '500px',
-          borderRadius: '50%',
-          objectFit: 'cover',
-          border: '3px solid white'
-        }}
-      />
+        <div style={{
+          color: 'white',
+          fontSize: '2.5rem',
+          fontWeight: 'bold',
+          marginBottom: '30px'
+        }}>
+          Squeeze to {targetDot}
+        </div>
+        
+        <video
+          ref={taskVideoRef}
+          autoPlay
+          playsInline
+          muted
+          style={{
+            width: '500px',
+            height: '500px',
+            borderRadius: '50%',
+            objectFit: 'cover',
+            border: '3px solid white',
+            backgroundColor: '#000'
+          }}
+        />
       
       {captureTimer && (
         <div style={{
