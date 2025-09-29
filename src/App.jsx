@@ -40,29 +40,6 @@ const CameraApp = () => {
   const totalRepetitions = 4;
   const restDuration = 10;
 
-  useEffect(() => {
-    if (cameras.length > 0 && !selectedMainCamera) {
-      setSelectedMainCamera(cameras[0].deviceId);
-    }
-    if (cameras.length > 1 && !selectedSecondCamera) {
-      setSelectedSecondCamera(cameras[1].deviceId);
-    }
-  }, [cameras, selectedMainCamera, selectedSecondCamera]);
-
-  useEffect(() => {
-    if (selectedMainCamera) {
-      startCamera();
-    }
-  }, [selectedMainCamera, startCamera]);
-
-  useEffect(() => {
-    if (dualCameraMode && selectedSecondCamera && cameras.length > 1) {
-      startSecondCamera();
-    } else {
-      stopSecondCamera();
-    }
-  }, [dualCameraMode, selectedSecondCamera, cameras.length, startSecondCamera]);
-
   const initializeCameras = async () => {
     try {
       const tempStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
@@ -125,6 +102,14 @@ const CameraApp = () => {
     }
   };
 
+  const startNeutralCountdown = useCallback((selectedGender) => {
+    setExperimentState('neutral-countdown');
+    // Give camera a moment to be ready, then capture
+    setTimeout(() => {
+      captureNeutralPhoto(selectedGender);
+    }, 1000);
+  }, []);
+
   const handleKeyPress = useCallback((event) => {
     if (event.key === 'Enter') {
       if (experimentState === 'neutral-ready') {
@@ -132,18 +117,6 @@ const CameraApp = () => {
       }
     }
   }, [experimentState, startNeutralCountdown]);
-
-  // Initialize cameras and set up event listeners
-  useEffect(() => {
-    initializeCameras();
-    window.addEventListener('keydown', handleKeyPress);
-    
-    return () => {
-      stopCamera();
-      stopSecondCamera();
-      window.removeEventListener('keydown', handleKeyPress);
-    };
-  }, [handleKeyPress]);
 
   const handleGenderSelection = (selectedGender) => {
     console.log('Gender selected:', selectedGender);
@@ -157,14 +130,6 @@ const CameraApp = () => {
       }, 2000);
     }, 3000);
   };
-
-  const startNeutralCountdown = useCallback((selectedGender) => {
-    setExperimentState('neutral-countdown');
-    // Give camera a moment to be ready, then capture
-    setTimeout(() => {
-      captureNeutralPhoto(selectedGender);
-    }, 1000);
-  }, []);
 
   const captureNeutralPhoto = (selectedGender) => {
     console.log('Attempting to capture neutral photo...');
@@ -334,6 +299,41 @@ const CameraApp = () => {
       }
     }
   };
+
+  // useEffects - After all function definitions
+  useEffect(() => {
+    if (cameras.length > 0 && !selectedMainCamera) {
+      setSelectedMainCamera(cameras[0].deviceId);
+    }
+    if (cameras.length > 1 && !selectedSecondCamera) {
+      setSelectedSecondCamera(cameras[1].deviceId);
+    }
+  }, [cameras, selectedMainCamera, selectedSecondCamera]);
+
+  useEffect(() => {
+    if (selectedMainCamera) {
+      startCamera();
+    }
+  }, [selectedMainCamera, startCamera]);
+
+  useEffect(() => {
+    if (dualCameraMode && selectedSecondCamera && cameras.length > 1) {
+      startSecondCamera();
+    } else {
+      stopSecondCamera();
+    }
+  }, [dualCameraMode, selectedSecondCamera, cameras.length, startSecondCamera]);
+
+  useEffect(() => {
+    initializeCameras();
+    window.addEventListener('keydown', handleKeyPress);
+    
+    return () => {
+      stopCamera();
+      stopSecondCamera();
+      window.removeEventListener('keydown', handleKeyPress);
+    };
+  }, [handleKeyPress]);
 
   useEffect(() => {
     if (experimentState === 'complete' && capturedImages.length > 0) {
