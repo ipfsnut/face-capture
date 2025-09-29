@@ -24,8 +24,8 @@ const CameraApp = () => {
   const secondStreamRef = useRef(null);
 
   const effortLevels = {
-    'M': { low: 'Blue', high: 'Red' },
-    'F': { low: 'Black', high: 'Green' }
+    'M': { low: 'Dot 2', high: 'Dot 3' },
+    'F': { low: 'Dot 1', high: 'Dot 2' }
   };
 
   const totalRepetitions = 4;
@@ -135,15 +135,14 @@ const CameraApp = () => {
   };
 
   const handleGenderSelection = (selectedGender) => {
-    const finalGender = selectedGender === 'prefer-not' ? 'F' : selectedGender;
-    console.log('Gender selected:', selectedGender, '-> Final gender:', finalGender);
-    setGender(finalGender);
+    console.log('Gender selected:', selectedGender);
+    setGender(selectedGender);
     setExperimentState('neutral-instruction');
     
     setTimeout(() => {
       setExperimentState('neutral-ready');
       setTimeout(() => {
-        startNeutralCountdown(finalGender);
+        startNeutralCountdown(selectedGender);
       }, 2000);
     }, 3000);
   };
@@ -516,23 +515,6 @@ const CameraApp = () => {
           onMouseLeave={(e) => e.target.style.backgroundColor = 'rgba(255, 255, 255, 0.1)'}
         >
           Female
-        </button>
-        <button
-          onClick={() => handleGenderSelection('prefer-not')}
-          style={{
-            padding: '20px 60px',
-            fontSize: '1.5rem',
-            backgroundColor: 'rgba(255, 255, 255, 0.1)',
-            color: 'white',
-            border: '2px solid white',
-            borderRadius: '10px',
-            cursor: 'pointer',
-            transition: 'background-color 0.3s'
-          }}
-          onMouseEnter={(e) => e.target.style.backgroundColor = 'rgba(255, 255, 255, 0.2)'}
-          onMouseLeave={(e) => e.target.style.backgroundColor = 'rgba(255, 255, 255, 0.1)'}
-        >
-          Prefer not to say
         </button>
       </div>
     </div>
