@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Target } from 'lucide-react';
+import { Target, MoreVertical, Settings, Camera } from 'lucide-react';
 
 const CameraApp = () => {
   const [experimentState, setExperimentState] = useState('gender-selection');
@@ -15,6 +15,8 @@ const CameraApp = () => {
   const [cameras, setCameras] = useState([]);
   const [selectedMainCamera, setSelectedMainCamera] = useState('');
   const [selectedSecondCamera, setSelectedSecondCamera] = useState('');
+  const [showMenu, setShowMenu] = useState(false);
+  const [showConfig, setShowConfig] = useState(false);
   
   const videoRef = useRef(null);
   const secondVideoRef = useRef(null);
@@ -313,6 +315,153 @@ const CameraApp = () => {
     }
   }, [experimentState, capturedImages]);
 
+  const renderConfigScreen = () => (
+    <div style={{
+      position: 'fixed',
+      top: 0,
+      left: 0,
+      right: 0,
+      bottom: 0,
+      backgroundColor: 'black',
+      zIndex: 1000,
+      padding: '40px',
+      overflowY: 'auto'
+    }}>
+      <div style={{
+        display: 'flex',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        marginBottom: '40px'
+      }}>
+        <h1 style={{
+          color: 'white',
+          fontSize: '2rem',
+          margin: 0
+        }}>
+          Camera Configuration
+        </h1>
+        <button
+          onClick={() => setShowConfig(false)}
+          style={{
+            color: 'white',
+            backgroundColor: 'transparent',
+            border: '2px solid white',
+            borderRadius: '5px',
+            padding: '10px 20px',
+            fontSize: '1rem',
+            cursor: 'pointer'
+          }}
+        >
+          Close
+        </button>
+      </div>
+
+      <div style={{
+        display: 'grid',
+        gridTemplateColumns: '1fr 1fr',
+        gap: '40px',
+        maxWidth: '1200px',
+        margin: '0 auto'
+      }}>
+        <div style={{ color: 'white' }}>
+          <h2 style={{ marginBottom: '20px', fontSize: '1.5rem' }}>Main Camera (Face)</h2>
+          <select
+            value={selectedMainCamera}
+            onChange={(e) => setSelectedMainCamera(e.target.value)}
+            style={{
+              width: '100%',
+              padding: '10px',
+              marginBottom: '20px',
+              fontSize: '1rem',
+              backgroundColor: '#333',
+              color: 'white',
+              border: '1px solid #666',
+              borderRadius: '5px'
+            }}
+          >
+            {cameras.map((camera, index) => (
+              <option key={camera.deviceId} value={camera.deviceId}>
+                {camera.label || `Camera ${index + 1}`}
+              </option>
+            ))}
+          </select>
+          <div style={{
+            border: '2px solid white',
+            borderRadius: '10px',
+            overflow: 'hidden',
+            backgroundColor: '#222'
+          }}>
+            <video
+              ref={videoRef}
+              autoPlay
+              playsInline
+              style={{
+                width: '100%',
+                height: '300px',
+                objectFit: 'cover'
+              }}
+            />
+          </div>
+        </div>
+
+        <div style={{ color: 'white' }}>
+          <h2 style={{ marginBottom: '20px', fontSize: '1.5rem' }}>Second Camera (Field View)</h2>
+          <select
+            value={selectedSecondCamera}
+            onChange={(e) => setSelectedSecondCamera(e.target.value)}
+            style={{
+              width: '100%',
+              padding: '10px',
+              marginBottom: '20px',
+              fontSize: '1rem',
+              backgroundColor: '#333',
+              color: 'white',
+              border: '1px solid #666',
+              borderRadius: '5px'
+            }}
+          >
+            <option value="">Select Camera</option>
+            {cameras.map((camera, index) => (
+              <option key={camera.deviceId} value={camera.deviceId}>
+                {camera.label || `Camera ${index + 1}`}
+              </option>
+            ))}
+          </select>
+          <div style={{
+            border: '2px solid white',
+            borderRadius: '10px',
+            overflow: 'hidden',
+            backgroundColor: '#222'
+          }}>
+            <video
+              ref={secondVideoRef}
+              autoPlay
+              playsInline
+              style={{
+                width: '100%',
+                height: '300px',
+                objectFit: 'cover'
+              }}
+            />
+          </div>
+        </div>
+      </div>
+
+      <div style={{
+        marginTop: '40px',
+        padding: '20px',
+        backgroundColor: '#333',
+        borderRadius: '10px',
+        color: 'white'
+      }}>
+        <h3 style={{ marginBottom: '10px' }}>Status:</h3>
+        <p>Main Camera: {selectedMainCamera ? 'Connected' : 'Not selected'}</p>
+        <p>Second Camera: {selectedSecondCamera ? 'Connected' : 'Not selected'}</p>
+        <p>Total Cameras Detected: {cameras.length}</p>
+      </div>
+    </div>
+  );
+
   const renderGenderSelection = () => (
     <div style={{
       display: 'flex',
@@ -538,16 +687,76 @@ const CameraApp = () => {
       bottom: 0,
       backgroundColor: 'black'
     }}>
+      {/* Three dots menu */}
+      {experimentState === 'gender-selection' && (
+        <div style={{
+          position: 'absolute',
+          top: '20px',
+          right: '20px',
+          zIndex: 100
+        }}>
+          <button
+            onClick={() => setShowMenu(!showMenu)}
+            style={{
+              backgroundColor: 'transparent',
+              border: 'none',
+              color: 'white',
+              cursor: 'pointer',
+              padding: '10px'
+            }}
+          >
+            <MoreVertical size={24} />
+          </button>
+          
+          {showMenu && (
+            <div style={{
+              position: 'absolute',
+              top: '100%',
+              right: '0',
+              backgroundColor: '#333',
+              border: '1px solid #666',
+              borderRadius: '5px',
+              minWidth: '150px',
+              boxShadow: '0 4px 6px rgba(0, 0, 0, 0.3)'
+            }}>
+              <button
+                onClick={() => {
+                  setShowConfig(true);
+                  setShowMenu(false);
+                }}
+                style={{
+                  width: '100%',
+                  padding: '12px 16px',
+                  backgroundColor: 'transparent',
+                  border: 'none',
+                  color: 'white',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px',
+                  fontSize: '14px'
+                }}
+                onMouseEnter={(e) => e.target.style.backgroundColor = '#444'}
+                onMouseLeave={(e) => e.target.style.backgroundColor = 'transparent'}
+              >
+                <Settings size={16} />
+                Configure
+              </button>
+            </div>
+          )}
+        </div>
+      )}
+
       <video
         ref={videoRef}
         autoPlay
         playsInline
         style={{
           position: 'fixed',
-          top: '-9999px',
-          left: '-9999px',
-          width: '1px',
-          height: '1px'
+          top: showConfig ? '0' : '-9999px',
+          left: showConfig ? '0' : '-9999px',
+          width: showConfig ? 'auto' : '1px',
+          height: showConfig ? 'auto' : '1px'
         }}
       />
       
@@ -566,13 +775,14 @@ const CameraApp = () => {
         </div>
       )}
       
-      {experimentState === 'gender-selection' && renderGenderSelection()}
-      {experimentState === 'neutral-instruction' && renderNeutralInstruction()}
-      {experimentState === 'neutral-ready' && renderNeutralReady()}
-      {experimentState === 'neutral-countdown' && renderNeutralReady()}
-      {experimentState === 'task' && renderTask()}
-      {experimentState === 'rest' && renderRest()}
-      {experimentState === 'complete' && renderComplete()}
+      {showConfig && renderConfigScreen()}
+      {!showConfig && experimentState === 'gender-selection' && renderGenderSelection()}
+      {!showConfig && experimentState === 'neutral-instruction' && renderNeutralInstruction()}
+      {!showConfig && experimentState === 'neutral-ready' && renderNeutralReady()}
+      {!showConfig && experimentState === 'neutral-countdown' && renderNeutralReady()}
+      {!showConfig && experimentState === 'task' && renderTask()}
+      {!showConfig && experimentState === 'rest' && renderRest()}
+      {!showConfig && experimentState === 'complete' && renderComplete()}
     </div>
   );
 };
