@@ -88,25 +88,7 @@ const CameraApp = () => {
       streamRef.current = stream;
       if (videoRef.current) {
         videoRef.current.srcObject = stream;
-        // Wait for video to be ready
-        return new Promise((resolve) => {
-          const handleLoadedData = () => {
-            console.log('Main camera loaded and ready', {
-              width: videoRef.current.videoWidth,
-              height: videoRef.current.videoHeight,
-              readyState: videoRef.current.readyState
-            });
-            videoRef.current.removeEventListener('loadeddata', handleLoadedData);
-            resolve();
-          };
-          videoRef.current.addEventListener('loadeddata', handleLoadedData);
-          
-          // Fallback timeout
-          setTimeout(() => {
-            videoRef.current.removeEventListener('loadeddata', handleLoadedData);
-            resolve();
-          }, 5000);
-        });
+        console.log('Main camera stream set');
       }
     } catch (err) {
       console.error('Error accessing main camera:', err);
@@ -168,27 +150,14 @@ const CameraApp = () => {
 
   const startNeutralCountdown = (selectedGender) => {
     setExperimentState('neutral-countdown');
-    // Wait for camera to be ready before capturing
-    const checkCameraAndCapture = () => {
-      if (videoRef.current && videoRef.current.videoWidth > 0 && videoRef.current.readyState >= 2) {
-        captureNeutralPhoto(selectedGender);
-      } else {
-        console.log('Camera not ready, waiting...');
-        setTimeout(checkCameraAndCapture, 500);
-      }
-    };
-    checkCameraAndCapture();
+    // Give camera a moment to be ready, then capture
+    setTimeout(() => {
+      captureNeutralPhoto(selectedGender);
+    }, 1000);
   };
 
   const captureNeutralPhoto = (selectedGender) => {
     console.log('Attempting to capture neutral photo...');
-    
-    // Double check camera readiness
-    if (!videoRef.current || videoRef.current.videoWidth === 0 || videoRef.current.readyState < 2) {
-      console.error('Camera not ready for neutral capture, retrying...');
-      setTimeout(() => captureNeutralPhoto(selectedGender), 1000);
-      return;
-    }
     
     const success = capturePhoto('neutral');
     setCountdown(null);
@@ -288,33 +257,40 @@ const CameraApp = () => {
   const capturePhoto = (label) => {
     const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
     
+    console.log('Capture attempt for:', label, {
+      videoRef: !!videoRef.current,
+      videoWidth: videoRef.current?.videoWidth,
+      videoHeight: videoRef.current?.videoHeight,
+      readyState: videoRef.current?.readyState,
+      networkState: videoRef.current?.networkState,
+      srcObject: !!videoRef.current?.srcObject
+    });
+    
     if (!videoRef.current) {
       console.error('Video element not found');
       return false;
     }
     
-    if (videoRef.current.videoWidth === 0 || videoRef.current.videoHeight === 0) {
-      console.error('Main camera not ready for capture', {
-        videoRef: !!videoRef.current,
-        videoWidth: videoRef.current?.videoWidth,
-        videoHeight: videoRef.current?.videoHeight,
-        readyState: videoRef.current?.readyState,
-        networkState: videoRef.current?.networkState
-      });
-      return false;
+    if (videoRef.current.videoWidth === 0) {
+      console.warn('Camera dimensions are 0, but attempting capture anyway');
+      // Don't return false - try to capture anyway
     }
     
-    console.log('Capturing photo:', label, {
-      width: videoRef.current.videoWidth,
-      height: videoRef.current.videoHeight,
-      readyState: videoRef.current.readyState
-    });
+    console.log('Proceeding with photo capture:', label);
     
     const canvas = document.createElement('canvas');
-    canvas.width = videoRef.current.videoWidth;
-    canvas.height = videoRef.current.videoHeight;
+    // Use video dimensions or fallback to reasonable defaults
+    canvas.width = videoRef.current.videoWidth || 640;
+    canvas.height = videoRef.current.videoHeight || 480;
     const context = canvas.getContext('2d');
-    context.drawImage(videoRef.current, 0, 0);
+    
+    try {
+      context.drawImage(videoRef.current, 0, 0, canvas.width, canvas.height);
+      console.log('Successfully drew image to canvas');
+    } catch (err) {
+      console.error('Error drawing image to canvas:', err);
+      return false;
+    }
     
     canvas.toBlob((blob) => {
       const filename = `capture-${label}-${timestamp}.jpg`;
