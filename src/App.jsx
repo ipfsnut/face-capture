@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Target, MoreVertical, Settings, Camera } from 'lucide-react';
+import JSZip from 'jszip';
 
 const CameraApp = () => {
   const [experimentState, setExperimentState] = useState('gender-selection');
@@ -17,6 +18,14 @@ const CameraApp = () => {
   const [selectedSecondCamera, setSelectedSecondCamera] = useState('');
   const [showMenu, setShowMenu] = useState(false);
   const [showConfig, setShowConfig] = useState(false);
+  
+  // Get experiment counter from localStorage
+  const getExperimentNumber = (gender) => {
+    const counters = JSON.parse(localStorage.getItem('experimentCounters') || '{"M": 0, "F": 0}');
+    counters[gender] = (counters[gender] || 0) + 1;
+    localStorage.setItem('experimentCounters', JSON.stringify(counters));
+    return counters[gender];
+  };
   
   const videoRef = useRef(null);
   const secondVideoRef = useRef(null);
@@ -263,11 +272,18 @@ const CameraApp = () => {
       videoHeight: videoRef.current?.videoHeight,
       readyState: videoRef.current?.readyState,
       networkState: videoRef.current?.networkState,
-      srcObject: !!videoRef.current?.srcObject
+      srcObject: !!videoRef.current?.srcObject,
+      streamRef: !!streamRef.current
     });
     
     if (!videoRef.current) {
-      console.error('Video element not found');
+      console.error('Video element not found - videoRef.current is null');
+      console.log('Stream ref status:', !!streamRef.current);
+      return false;
+    }
+    
+    if (!streamRef.current) {
+      console.error('No stream available - camera may not be started');
       return false;
     }
     
@@ -320,23 +336,55 @@ const CameraApp = () => {
 
   useEffect(() => {
     if (experimentState === 'complete' && capturedImages.length > 0) {
-      const downloadAll = async () => {
-        for (const image of capturedImages) {
+      const createZipAndDownload = async () => {
+        try {
+          const zip = new JSZip();
+          const experimentNumber = getExperimentNumber(gender);
+          const experimentName = `${gender}-${experimentNumber}`;
+          
+          console.log(`Creating experiment zip: ${experimentName}`);
+          
+          // Add all captured images to the zip
+          for (const image of capturedImages) {
+            zip.file(image.filename, image.blob);
+          }
+          
+          // Generate the zip file
+          const zipBlob = await zip.generateAsync({ type: 'blob' });
+          
+          // Download the zip file
           const link = document.createElement('a');
-          link.href = image.url;
-          link.download = image.filename;
+          link.href = URL.createObjectURL(zipBlob);
+          link.download = `${experimentName}.zip`;
           link.style.display = 'none';
           document.body.appendChild(link);
           link.click();
           document.body.removeChild(link);
-          await new Promise(resolve => setTimeout(resolve, 100));
+          
+          // Clean up
+          URL.revokeObjectURL(link.href);
+          capturedImages.forEach(image => URL.revokeObjectURL(image.url));
+          
+          console.log(`Experiment ${experimentName} downloaded successfully`);
+        } catch (error) {
+          console.error('Error creating zip file:', error);
+          // Fallback to individual downloads
+          for (const image of capturedImages) {
+            const link = document.createElement('a');
+            link.href = image.url;
+            link.download = image.filename;
+            link.style.display = 'none';
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            await new Promise(resolve => setTimeout(resolve, 100));
+          }
+          capturedImages.forEach(image => URL.revokeObjectURL(image.url));
         }
-        
-        capturedImages.forEach(image => URL.revokeObjectURL(image.url));
       };
-      downloadAll();
+      createZipAndDownload();
     }
-  }, [experimentState, capturedImages]);
+  }, [experimentState, capturedImages, gender]);
 
   const renderConfigScreen = () => (
     <div style={{
