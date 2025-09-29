@@ -88,6 +88,25 @@ const CameraApp = () => {
       streamRef.current = stream;
       if (videoRef.current) {
         videoRef.current.srcObject = stream;
+        // Wait for video to be ready
+        return new Promise((resolve) => {
+          const handleLoadedData = () => {
+            console.log('Main camera loaded and ready', {
+              width: videoRef.current.videoWidth,
+              height: videoRef.current.videoHeight,
+              readyState: videoRef.current.readyState
+            });
+            videoRef.current.removeEventListener('loadeddata', handleLoadedData);
+            resolve();
+          };
+          videoRef.current.addEventListener('loadeddata', handleLoadedData);
+          
+          // Fallback timeout
+          setTimeout(() => {
+            videoRef.current.removeEventListener('loadeddata', handleLoadedData);
+            resolve();
+          }, 5000);
+        });
       }
     } catch (err) {
       console.error('Error accessing main camera:', err);
@@ -149,15 +168,33 @@ const CameraApp = () => {
 
   const startNeutralCountdown = (selectedGender) => {
     setExperimentState('neutral-countdown');
-    captureNeutralPhoto(selectedGender);
+    // Wait for camera to be ready before capturing
+    const checkCameraAndCapture = () => {
+      if (videoRef.current && videoRef.current.videoWidth > 0 && videoRef.current.readyState >= 2) {
+        captureNeutralPhoto(selectedGender);
+      } else {
+        console.log('Camera not ready, waiting...');
+        setTimeout(checkCameraAndCapture, 500);
+      }
+    };
+    checkCameraAndCapture();
   };
 
   const captureNeutralPhoto = (selectedGender) => {
     console.log('Attempting to capture neutral photo...');
+    
+    // Double check camera readiness
+    if (!videoRef.current || videoRef.current.videoWidth === 0 || videoRef.current.readyState < 2) {
+      console.error('Camera not ready for neutral capture, retrying...');
+      setTimeout(() => captureNeutralPhoto(selectedGender), 1000);
+      return;
+    }
+    
     const success = capturePhoto('neutral');
     setCountdown(null);
     
     if (success !== false) {
+      console.log('Neutral photo captured successfully');
       setExperimentState('rest');
       setTimeout(() => {
         startExperimentalTrials(selectedGender);
@@ -251,16 +288,27 @@ const CameraApp = () => {
   const capturePhoto = (label) => {
     const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
     
-    if (!videoRef.current || videoRef.current.videoWidth === 0) {
+    if (!videoRef.current) {
+      console.error('Video element not found');
+      return false;
+    }
+    
+    if (videoRef.current.videoWidth === 0 || videoRef.current.videoHeight === 0) {
       console.error('Main camera not ready for capture', {
         videoRef: !!videoRef.current,
         videoWidth: videoRef.current?.videoWidth,
-        readyState: videoRef.current?.readyState
+        videoHeight: videoRef.current?.videoHeight,
+        readyState: videoRef.current?.readyState,
+        networkState: videoRef.current?.networkState
       });
       return false;
     }
     
-    console.log('Capturing photo:', label);
+    console.log('Capturing photo:', label, {
+      width: videoRef.current.videoWidth,
+      height: videoRef.current.videoHeight,
+      readyState: videoRef.current.readyState
+    });
     
     const canvas = document.createElement('canvas');
     canvas.width = videoRef.current.videoWidth;
@@ -733,12 +781,13 @@ const CameraApp = () => {
         ref={videoRef}
         autoPlay
         playsInline
+        muted
         style={{
           position: 'fixed',
-          top: showConfig ? '0' : '-9999px',
-          left: showConfig ? '0' : '-9999px',
-          width: showConfig ? 'auto' : '1px',
-          height: showConfig ? 'auto' : '1px'
+          top: '-9999px',
+          left: '-9999px',
+          width: '1px',
+          height: '1px'
         }}
       />
       
