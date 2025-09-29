@@ -41,17 +41,6 @@ const CameraApp = () => {
   const restDuration = 10;
 
   useEffect(() => {
-    initializeCameras();
-    window.addEventListener('keydown', handleKeyPress);
-    
-    return () => {
-      stopCamera();
-      stopSecondCamera();
-      window.removeEventListener('keydown', handleKeyPress);
-    };
-  }, [handleKeyPress]);
-
-  useEffect(() => {
     if (cameras.length > 0 && !selectedMainCamera) {
       setSelectedMainCamera(cameras[0].deviceId);
     }
@@ -143,6 +132,18 @@ const CameraApp = () => {
       }
     }
   }, [experimentState, startNeutralCountdown]);
+
+  // Initialize cameras and set up event listeners
+  useEffect(() => {
+    initializeCameras();
+    window.addEventListener('keydown', handleKeyPress);
+    
+    return () => {
+      stopCamera();
+      stopSecondCamera();
+      window.removeEventListener('keydown', handleKeyPress);
+    };
+  }, [handleKeyPress]);
 
   const handleGenderSelection = (selectedGender) => {
     console.log('Gender selected:', selectedGender);
