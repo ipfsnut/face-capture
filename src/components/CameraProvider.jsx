@@ -1,0 +1,192 @@
+import { useState, useRef, useEffect, createContext, useContext } from 'react';
+
+const CameraContext = createContext(null);
+
+export const useCamera = () => {
+  const context = useContext(CameraContext);
+  if (!context) {
+    throw new Error('useCamera must be used within CameraProvider');
+  }
+  return context;
+};
+
+export const CameraProvider = ({ children }) => {
+  const [cameras, setCameras] = useState([]);
+  const [selectedMainCamera, setSelectedMainCamera] = useState('');
+  const [selectedSecondCamera, setSelectedSecondCamera] = useState('');
+  
+  const mainVideoRef = useRef(null);
+  const secondVideoRef = useRef(null);
+  const mainStreamRef = useRef(null);
+  const secondStreamRef = useRef(null);
+
+  // Initialize cameras on mount
+  useEffect(() => {
+    initializeCameras();
+    
+    // Load saved camera selections
+    const savedMain = localStorage.getItem('selectedMainCamera');
+    const savedSecond = localStorage.getItem('selectedSecondCamera');
+    if (savedMain) setSelectedMainCamera(savedMain);
+    if (savedSecond) setSelectedSecondCamera(savedSecond);
+    
+    return () => {
+      stopAllCameras();
+    };
+  }, []);
+
+  const initializeCameras = async () => {
+    try {
+      // Request permission and get device list
+      const tempStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
+      const devices = await navigator.mediaDevices.enumerateDevices();
+      const videoDevices = devices.filter(device => device.kind === 'videoinput');
+      setCameras(videoDevices);
+      tempStream.getTracks().forEach(track => track.stop());
+      
+      console.log(`Found ${videoDevices.length} cameras`);
+    } catch (err) {
+      console.error('Error initializing cameras:', err);
+    }
+  };
+
+  const startMainCamera = async (deviceId) => {
+    try {
+      if (mainStreamRef.current) {
+        mainStreamRef.current.getTracks().forEach(track => track.stop());
+      }
+      
+      const constraints = deviceId 
+        ? { video: { deviceId: { exact: deviceId } }, audio: false }
+        : { video: true, audio: false };
+      
+      const stream = await navigator.mediaDevices.getUserMedia(constraints);
+      mainStreamRef.current = stream;
+      
+      if (mainVideoRef.current) {
+        mainVideoRef.current.srcObject = stream;
+        console.log('Main camera started');
+      }
+      
+      return stream;
+    } catch (err) {
+      console.error('Error starting main camera:', err);
+      return null;
+    }
+  };
+
+  const startSecondCamera = async (deviceId) => {
+    try {
+      if (secondStreamRef.current) {
+        secondStreamRef.current.getTracks().forEach(track => track.stop());
+      }
+      
+      if (!deviceId) {
+        console.log('No second camera selected');
+        return null;
+      }
+      
+      const constraints = {
+        video: { deviceId: { exact: deviceId } },
+        audio: false
+      };
+      
+      const stream = await navigator.mediaDevices.getUserMedia(constraints);
+      secondStreamRef.current = stream;
+      
+      if (secondVideoRef.current) {
+        secondVideoRef.current.srcObject = stream;
+        console.log('Second camera started');
+      }
+      
+      return stream;
+    } catch (err) {
+      console.error('Error starting second camera:', err);
+      return null;
+    }
+  };
+
+  const stopAllCameras = () => {
+    if (mainStreamRef.current) {
+      mainStreamRef.current.getTracks().forEach(track => track.stop());
+      mainStreamRef.current = null;
+    }
+    if (secondStreamRef.current) {
+      secondStreamRef.current.getTracks().forEach(track => track.stop());
+      secondStreamRef.current = null;
+    }
+  };
+
+  // Start cameras when selections change
+  useEffect(() => {
+    if (selectedMainCamera) {
+      startMainCamera(selectedMainCamera);
+      localStorage.setItem('selectedMainCamera', selectedMainCamera);
+    }
+  }, [selectedMainCamera]);
+
+  useEffect(() => {
+    if (selectedSecondCamera) {
+      startSecondCamera(selectedSecondCamera);
+      localStorage.setItem('selectedSecondCamera', selectedSecondCamera);
+    }
+  }, [selectedSecondCamera]);
+
+  // Auto-select first cameras if available
+  useEffect(() => {
+    if (cameras.length > 0 && !selectedMainCamera) {
+      setSelectedMainCamera(cameras[0].deviceId);
+    }
+    if (cameras.length > 1 && !selectedSecondCamera) {
+      setSelectedSecondCamera(cameras[1].deviceId);
+    }
+  }, [cameras, selectedMainCamera, selectedSecondCamera]);
+
+  const capturePhoto = (videoRef, label) => {
+    if (!videoRef.current) {
+      console.error(`No video element for ${label}`);
+      return null;
+    }
+
+    const video = videoRef.current;
+    const canvas = document.createElement('canvas');
+    canvas.width = video.videoWidth || 640;
+    canvas.height = video.videoHeight || 480;
+    
+    const context = canvas.getContext('2d');
+    try {
+      context.drawImage(video, 0, 0, canvas.width, canvas.height);
+      console.log(`Photo captured: ${label}`);
+      
+      return new Promise((resolve) => {
+        canvas.toBlob((blob) => {
+          resolve(blob);
+        }, 'image/jpeg', 0.95);
+      });
+    } catch (err) {
+      console.error(`Error capturing ${label}:`, err);
+      return null;
+    }
+  };
+
+  const value = {
+    cameras,
+    selectedMainCamera,
+    selectedSecondCamera,
+    setSelectedMainCamera,
+    setSelectedSecondCamera,
+    mainVideoRef,
+    secondVideoRef,
+    mainStreamRef,
+    secondStreamRef,
+    capturePhoto,
+    startMainCamera,
+    startSecondCamera,
+  };
+
+  return (
+    <CameraContext.Provider value={value}>
+      {children}
+    </CameraContext.Provider>
+  );
+};
