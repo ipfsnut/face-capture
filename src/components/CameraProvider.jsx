@@ -126,6 +126,7 @@ export const CameraProvider = ({ children }) => {
   // Start cameras when selections change
   useEffect(() => {
     if (selectedMainCamera) {
+      console.log('Main camera selection changed, restarting...');
       startMainCamera(selectedMainCamera);
       localStorage.setItem('selectedMainCamera', selectedMainCamera);
     }
@@ -133,6 +134,7 @@ export const CameraProvider = ({ children }) => {
 
   useEffect(() => {
     if (selectedSecondCamera) {
+      console.log('Second camera selection changed, restarting...');
       startSecondCamera(selectedSecondCamera);
       localStorage.setItem('selectedSecondCamera', selectedSecondCamera);
     }
@@ -154,7 +156,7 @@ export const CameraProvider = ({ children }) => {
     }
   }, [cameras]);
 
-  const capturePhoto = (videoRef, label) => {
+  const capturePhoto = async (videoRef, label) => {
     if (!videoRef || !videoRef.current) {
       console.error(`No video element for ${label}`, {
         ref: !!videoRef,
@@ -165,29 +167,60 @@ export const CameraProvider = ({ children }) => {
 
     const video = videoRef.current;
     
+    // Wait for video to be ready if needed
+    if (video.readyState < 2) {
+      console.log(`Waiting for video to be ready for ${label}...`);
+      await new Promise((resolve) => {
+        video.addEventListener('loadeddata', resolve, { once: true });
+        setTimeout(resolve, 1000); // Timeout after 1 second
+      });
+    }
+    
+    console.log(`Pre-capture check for ${label}:`, {
+      hasVideo: !!video,
+      hasSrcObject: !!video.srcObject,
+      videoWidth: video.videoWidth,
+      videoHeight: video.videoHeight,
+      readyState: video.readyState,
+      networkState: video.networkState,
+      paused: video.paused,
+      currentTime: video.currentTime
+    });
+    
     // Check if video is actually playing
     if (!video.srcObject) {
       console.error(`No stream for ${label}`);
       return null;
     }
     
-    const canvas = document.createElement('canvas');
-    canvas.width = video.videoWidth || 640;
-    canvas.height = video.videoHeight || 480;
+    // Force play if paused
+    if (video.paused) {
+      console.log(`Video was paused for ${label}, playing...`);
+      video.play();
+    }
     
-    console.log(`Capturing ${label}:`, {
-      width: canvas.width,
-      height: canvas.height,
-      readyState: video.readyState
-    });
+    // Use actual video dimensions if available, fallback to defaults
+    const width = video.videoWidth > 0 ? video.videoWidth : 640;
+    const height = video.videoHeight > 0 ? video.videoHeight : 480;
+    
+    const canvas = document.createElement('canvas');
+    canvas.width = width;
+    canvas.height = height;
+    
+    console.log(`Canvas size for ${label}: ${canvas.width}x${canvas.height}`);
     
     const context = canvas.getContext('2d');
     try {
       context.drawImage(video, 0, 0, canvas.width, canvas.height);
-      console.log(`Photo captured: ${label}`);
+      
+      // Check if we actually drew something
+      const imageData = context.getImageData(0, 0, 1, 1);
+      const isBlank = imageData.data.every(pixel => pixel === 0);
+      console.log(`Photo captured: ${label}, isBlank: ${isBlank}`);
       
       return new Promise((resolve) => {
         canvas.toBlob((blob) => {
+          console.log(`Blob created for ${label}, size: ${blob?.size} bytes`);
           resolve(blob);
         }, 'image/jpeg', 0.95);
       });
@@ -222,11 +255,20 @@ export const CameraProvider = ({ children }) => {
         muted
         style={{
           position: 'fixed',
-          top: '-9999px',
-          left: '-9999px',
-          width: '1px',
-          height: '1px'
+          top: '-10000px',
+          left: '-10000px',
+          width: '640px',
+          height: '480px',
+          objectFit: 'cover'
         }}
+        onLoadedMetadata={(e) => {
+          console.log('Main capture video loaded:', {
+            width: e.target.videoWidth,
+            height: e.target.videoHeight
+          });
+        }}
+        onPlay={() => console.log('Main capture video playing')}
+        onError={(e) => console.error('Main capture video error:', e)}
       />
       <video
         ref={secondVideoRef}
@@ -235,11 +277,20 @@ export const CameraProvider = ({ children }) => {
         muted
         style={{
           position: 'fixed',
-          top: '-9999px',
-          left: '-9999px',
-          width: '1px',
-          height: '1px'
+          top: '-10000px',
+          left: '-10000px',
+          width: '640px',
+          height: '480px',
+          objectFit: 'cover'
         }}
+        onLoadedMetadata={(e) => {
+          console.log('Second capture video loaded:', {
+            width: e.target.videoWidth,
+            height: e.target.videoHeight
+          });
+        }}
+        onPlay={() => console.log('Second capture video playing')}
+        onError={(e) => console.error('Second capture video error:', e)}
       />
       {children}
     </CameraContext.Provider>
