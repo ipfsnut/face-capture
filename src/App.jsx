@@ -48,9 +48,14 @@ const ExperimentApp = () => {
 
   const startNeutralCapture = (selectedGender) => {
     setExperimentState('neutral-countdown');
+    // Give more time for refs to be set
     setTimeout(() => {
+      console.log('About to capture neutral, checking refs:', {
+        mainRef: !!mainVideoRef?.current,
+        secondRef: !!secondVideoRef?.current
+      });
       captureNeutralPhoto(selectedGender);
-    }, 1000);
+    }, 2000);
   };
 
   const captureNeutralPhoto = async (selectedGender) => {
@@ -305,9 +310,11 @@ const ExperimentApp = () => {
         </div>
       )}
 
-      {/* Hidden cameras - always present but off-screen */}
-      <CameraView camera="main" visible={false} />
-      <CameraView camera="second" visible={false} />
+      {/* Both cameras - always rendered to maintain refs */}
+      <div style={{ position: 'fixed', top: '-9999px', left: '-9999px', width: '1px', height: '1px', overflow: 'hidden' }}>
+        <CameraView camera="main" visible={false} />
+        <CameraView camera="second" visible={false} />
+      </div>
 
       {/* Configuration screen */}
       {showConfig && <ConfigScreen onClose={() => setShowConfig(false)} />}

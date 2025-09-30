@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { useCamera } from './CameraProvider';
 
 export const CameraView = ({ 
@@ -11,6 +11,14 @@ export const CameraView = ({
   
   const videoRef = camera === 'main' ? mainVideoRef : secondVideoRef;
   const streamRef = camera === 'main' ? mainStreamRef : secondStreamRef;
+  
+  // Track if this component has mounted
+  useEffect(() => {
+    console.log(`CameraView ${camera} mounted, ref current:`, !!videoRef.current);
+    return () => {
+      console.log(`CameraView ${camera} unmounting`);
+    };
+  }, []);
   
   // Sync stream when component mounts or visibility changes
   useEffect(() => {
