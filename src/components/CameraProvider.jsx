@@ -63,9 +63,12 @@ export const CameraProvider = ({ children }) => {
       const stream = await navigator.mediaDevices.getUserMedia(constraints);
       mainStreamRef.current = stream;
       
+      // IMPORTANT: Set stream to the hidden capture video element
       if (mainVideoRef.current) {
         mainVideoRef.current.srcObject = stream;
-        console.log('Main camera started');
+        console.log('Main camera started and connected to capture element');
+      } else {
+        console.error('Main video ref not available!');
       }
       
       return stream;
@@ -94,9 +97,12 @@ export const CameraProvider = ({ children }) => {
       const stream = await navigator.mediaDevices.getUserMedia(constraints);
       secondStreamRef.current = stream;
       
+      // IMPORTANT: Set stream to the hidden capture video element
       if (secondVideoRef.current) {
         secondVideoRef.current.srcObject = stream;
-        console.log('Second camera started');
+        console.log('Second camera started and connected to capture element');
+      } else {
+        console.error('Second video ref not available!');
       }
       
       return stream;
