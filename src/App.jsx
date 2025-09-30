@@ -310,11 +310,6 @@ const ExperimentApp = () => {
         </div>
       )}
 
-      {/* Both cameras - always rendered to maintain refs */}
-      <div style={{ position: 'fixed', top: '-9999px', left: '-9999px', width: '1px', height: '1px', overflow: 'hidden' }}>
-        <CameraView camera="main" visible={false} />
-        <CameraView camera="second" visible={false} />
-      </div>
 
       {/* Configuration screen */}
       {showConfig && <ConfigScreen onClose={() => setShowConfig(false)} />}

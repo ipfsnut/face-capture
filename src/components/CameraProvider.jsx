@@ -208,6 +208,33 @@ export const CameraProvider = ({ children }) => {
 
   return (
     <CameraContext.Provider value={value}>
+      {/* Hidden video elements that are always present for capture */}
+      <video
+        ref={mainVideoRef}
+        autoPlay
+        playsInline
+        muted
+        style={{
+          position: 'fixed',
+          top: '-9999px',
+          left: '-9999px',
+          width: '1px',
+          height: '1px'
+        }}
+      />
+      <video
+        ref={secondVideoRef}
+        autoPlay
+        playsInline
+        muted
+        style={{
+          position: 'fixed',
+          top: '-9999px',
+          left: '-9999px',
+          width: '1px',
+          height: '1px'
+        }}
+      />
       {children}
     </CameraContext.Provider>
   );

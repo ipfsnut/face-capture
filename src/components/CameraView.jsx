@@ -7,26 +7,17 @@ export const CameraView = ({
   style = {},
   className = ''
 }) => {
-  const { mainVideoRef, secondVideoRef, mainStreamRef, secondStreamRef } = useCamera();
-  
-  const videoRef = camera === 'main' ? mainVideoRef : secondVideoRef;
+  const { mainStreamRef, secondStreamRef } = useCamera();
+  const localVideoRef = useRef(null);
   const streamRef = camera === 'main' ? mainStreamRef : secondStreamRef;
   
-  // Track if this component has mounted
+  // Sync stream to this local video element
   useEffect(() => {
-    console.log(`CameraView ${camera} mounted, ref current:`, !!videoRef.current);
-    return () => {
-      console.log(`CameraView ${camera} unmounting`);
-    };
-  }, []);
-  
-  // Sync stream when component mounts or visibility changes
-  useEffect(() => {
-    if (videoRef.current && streamRef.current) {
-      videoRef.current.srcObject = streamRef.current;
+    if (localVideoRef.current && streamRef.current) {
+      localVideoRef.current.srcObject = streamRef.current;
       console.log(`${camera} camera view synced (visible: ${visible})`);
     }
-  }, [visible, camera, videoRef, streamRef]);
+  }, [visible, camera, streamRef]);
   
   const defaultStyle = {
     position: visible ? 'static' : 'fixed',
@@ -39,16 +30,16 @@ export const CameraView = ({
   
   return (
     <video
-      ref={videoRef}
+      ref={localVideoRef}
       autoPlay
       playsInline
       muted
       className={className}
       style={defaultStyle}
       onLoadedMetadata={() => {
-        console.log(`${camera} camera metadata loaded`, {
-          width: videoRef.current?.videoWidth,
-          height: videoRef.current?.videoHeight
+        console.log(`${camera} camera display loaded`, {
+          width: localVideoRef.current?.videoWidth,
+          height: localVideoRef.current?.videoHeight
         });
       }}
     />
