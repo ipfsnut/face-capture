@@ -132,15 +132,21 @@ export const CameraProvider = ({ children }) => {
     }
   }, [selectedSecondCamera]);
 
-  // Auto-select first cameras if available
+  // Auto-select cameras if available - but don't override saved selections
   useEffect(() => {
-    if (cameras.length > 0 && !selectedMainCamera) {
+    const savedMain = localStorage.getItem('selectedMainCamera');
+    const savedSecond = localStorage.getItem('selectedSecondCamera');
+    
+    // Only auto-select if there's no saved preference
+    if (cameras.length > 0 && !selectedMainCamera && !savedMain) {
+      // Try to be smart about it - often built-in cameras come first
       setSelectedMainCamera(cameras[0].deviceId);
     }
-    if (cameras.length > 1 && !selectedSecondCamera) {
+    if (cameras.length > 1 && !selectedSecondCamera && !savedSecond) {
+      // Second camera is often external/USB
       setSelectedSecondCamera(cameras[1].deviceId);
     }
-  }, [cameras, selectedMainCamera, selectedSecondCamera]);
+  }, [cameras]);
 
   const capturePhoto = (videoRef, label) => {
     if (!videoRef.current) {
