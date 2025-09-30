@@ -14,9 +14,9 @@ export const CameraView = ({
   
   // Sync stream when component mounts or visibility changes
   useEffect(() => {
-    if (visible && videoRef.current && streamRef.current) {
+    if (videoRef.current && streamRef.current) {
       videoRef.current.srcObject = streamRef.current;
-      console.log(`${camera} camera view synced`);
+      console.log(`${camera} camera view synced (visible: ${visible})`);
     }
   }, [visible, camera, videoRef, streamRef]);
   
@@ -37,6 +37,12 @@ export const CameraView = ({
       muted
       className={className}
       style={defaultStyle}
+      onLoadedMetadata={() => {
+        console.log(`${camera} camera metadata loaded`, {
+          width: videoRef.current?.videoWidth,
+          height: videoRef.current?.videoHeight
+        });
+      }}
     />
   );
 };

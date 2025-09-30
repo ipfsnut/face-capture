@@ -184,38 +184,55 @@ const ExperimentApp = () => {
 
   // Download images as zip when experiment completes
   useEffect(() => {
+    console.log('Download check:', {
+      state: experimentState,
+      imagesCount: capturedImages.length,
+      gender: gender
+    });
+    
     if (experimentState === 'complete' && capturedImages.length > 0) {
       const createZipAndDownload = async () => {
         try {
+          console.log(`Starting zip creation with ${capturedImages.length} images`);
           const zip = new JSZip();
           const experimentNumber = getExperimentNumber(gender);
           const experimentName = `${gender}-${experimentNumber}`;
           
           console.log(`Creating experiment zip: ${experimentName}`);
+          console.log('Images to zip:', capturedImages.map(img => img.filename));
           
           for (const image of capturedImages) {
             zip.file(image.filename, image.blob);
           }
           
+          console.log('Generating zip blob...');
           const zipBlob = await zip.generateAsync({ type: 'blob' });
+          console.log(`Zip blob created, size: ${zipBlob.size} bytes`);
           
           const link = document.createElement('a');
           link.href = URL.createObjectURL(zipBlob);
           link.download = `${experimentName}.zip`;
           link.style.display = 'none';
           document.body.appendChild(link);
+          
+          console.log('Triggering download...');
           link.click();
-          document.body.removeChild(link);
           
-          URL.revokeObjectURL(link.href);
-          capturedImages.forEach(image => URL.revokeObjectURL(image.url));
+          // Give browser time to start download before cleanup
+          setTimeout(() => {
+            document.body.removeChild(link);
+            URL.revokeObjectURL(link.href);
+            capturedImages.forEach(image => URL.revokeObjectURL(image.url));
+          }, 100);
           
-          console.log(`Experiment ${experimentName} downloaded successfully`);
+          console.log(`Experiment ${experimentName} download triggered`);
         } catch (error) {
           console.error('Error creating zip file:', error);
         }
       };
-      createZipAndDownload();
+      
+      // Small delay to ensure state is settled
+      setTimeout(createZipAndDownload, 500);
     }
   }, [experimentState, capturedImages, gender]);
 

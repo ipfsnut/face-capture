@@ -149,15 +149,31 @@ export const CameraProvider = ({ children }) => {
   }, [cameras]);
 
   const capturePhoto = (videoRef, label) => {
-    if (!videoRef.current) {
-      console.error(`No video element for ${label}`);
+    if (!videoRef || !videoRef.current) {
+      console.error(`No video element for ${label}`, {
+        ref: !!videoRef,
+        current: !!videoRef?.current
+      });
       return null;
     }
 
     const video = videoRef.current;
+    
+    // Check if video is actually playing
+    if (!video.srcObject) {
+      console.error(`No stream for ${label}`);
+      return null;
+    }
+    
     const canvas = document.createElement('canvas');
     canvas.width = video.videoWidth || 640;
     canvas.height = video.videoHeight || 480;
+    
+    console.log(`Capturing ${label}:`, {
+      width: canvas.width,
+      height: canvas.height,
+      readyState: video.readyState
+    });
     
     const context = canvas.getContext('2d');
     try {
