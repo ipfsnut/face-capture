@@ -197,7 +197,8 @@ const ExperimentApp = () => {
           setCurrentTrial(prevTrial => {
             const nextTrial = prevTrial + 1;
             if (nextTrial >= totalRepetitions * 2) {
-              setExperimentState('complete');
+              // Don't set complete here, let runNextTrial handle it
+              setTimeout(() => runNextTrial(nextTrial), 100);
             } else {
               startRestPeriod(nextTrial);
             }
@@ -250,15 +251,21 @@ const ExperimentApp = () => {
     }, 1000);
   };
 
+  // Track if download has been triggered
+  const [downloadTriggered, setDownloadTriggered] = useState(false);
+
   // Download images as zip when experiment completes
   useEffect(() => {
     console.log('Download check:', {
       state: experimentState,
       imagesCount: capturedImages.length,
-      gender: gender
+      gender: gender,
+      downloadTriggered: downloadTriggered
     });
     
-    if (experimentState === 'complete' && capturedImages.length > 0) {
+    if (experimentState === 'complete' && capturedImages.length > 0 && !downloadTriggered) {
+      setDownloadTriggered(true); // Prevent multiple triggers
+      
       const createZipAndDownload = async () => {
         try {
           console.log(`Starting zip creation with ${capturedImages.length} images`);
@@ -302,7 +309,7 @@ const ExperimentApp = () => {
       // Small delay to ensure state is settled
       setTimeout(createZipAndDownload, 500);
     }
-  }, [experimentState, capturedImages, gender]);
+  }, [experimentState, capturedImages, gender, downloadTriggered]);
 
   return (
     <div style={{ 
