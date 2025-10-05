@@ -23,7 +23,7 @@ const ExperimentApp = () => {
     'F': { low: 'Dot 1', high: 'Dot 2' }
   };
   
-  const totalRepetitions = 4;
+  const totalRepetitions = 5;
   const restDuration = 10;
 
   const getExperimentNumber = (gender) => {
@@ -387,10 +387,17 @@ const ExperimentApp = () => {
           height: '100vh',
           gap: '40px'
         }}>
+          
           <h1 style={{ color: 'white', fontSize: '3rem', marginBottom: '20px' }}>
             Please select:
           </h1>
+
+          <div>
+            <p style={{ color: 'white', fontSize: '2rem'}}>            Welcome to the Physical Effort task. You will use the handgrip dynamometer to exert enough pressure to point the dial at the specified dot. 
+            </p>
+          </div>
           <div style={{ display: 'flex', gap: '30px', flexDirection: 'column' }}>
+            
             <button
               onClick={() => handleGenderSelection('M')}
               style={{
