@@ -36,12 +36,75 @@ const ExperimentApp = () => {
   const handleGenderSelection = (selectedGender) => {
     console.log('Gender selected:', selectedGender);
     setGender(selectedGender);
-    setExperimentState('neutral-instruction');
+    setExperimentState('training-instruction');
     
+    // Start training phase after instructions
+    setTimeout(() => {
+      startTrainingPhase();
+    }, 4000);
+  };
+
+  const startTrainingPhase = () => {
+    console.log('Starting training phase');
+    const trainingTrials = [
+      { effort: 'low', dot: 'Dot 1', type: 'training' },
+      { effort: 'high', dot: 'Dot 3', type: 'training' }
+    ];
+    
+    window.trainingTrials = trainingTrials;
+    window.currentTrainingIndex = 0;
+    runTrainingTrial();
+  };
+  
+  const runTrainingTrial = () => {
+    const trial = window.trainingTrials[window.currentTrainingIndex];
+    
+    if (!trial) {
+      // Training complete, show completion screen with options
+      setExperimentState('training-complete');
+      return;
+    }
+    
+    setTargetDot(trial.dot);
+    setExperimentState('training-task');
+    
+    // No capture for training, just timing
+    setCaptureTimer(3);
+    const trainingInterval = setInterval(() => {
+      setCaptureTimer(prev => {
+        if (prev <= 1) {
+          clearInterval(trainingInterval);
+          setCaptureTimer(null);
+          
+          // Move to next training trial or complete
+          window.currentTrainingIndex++;
+          
+          if (window.currentTrainingIndex < window.trainingTrials.length) {
+            setExperimentState('training-rest');
+            setTimeout(() => runTrainingTrial(), 3000);
+          } else {
+            runTrainingTrial(); // Will trigger completion
+          }
+          
+          return null;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+  };
+
+  const repeatTraining = () => {
+    console.log('Repeating training phase');
+    startTrainingPhase();
+  };
+  
+  const continueToExperiment = () => {
+    console.log('Continuing to main experiment');
+    setExperimentState('neutral-instruction');
     setTimeout(() => {
       setExperimentState('neutral-ready');
       setTimeout(() => {
-        startNeutralCapture(selectedGender);
+        startNeutralCapture(gender);
       }, 2000);
     }, 3000);
   };
@@ -361,6 +424,164 @@ const ExperimentApp = () => {
               Female
             </button>
           </div>
+        </div>
+      )}
+
+      {!showConfig && experimentState === 'training-instruction' && (
+        <div style={{
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          justifyContent: 'center',
+          height: '100vh',
+          padding: '40px'
+        }}>
+          <h2 style={{ color: 'white', fontSize: '2.5rem', fontWeight: 'bold', marginBottom: '20px' }}>
+            Training Phase
+          </h2>
+          <p style={{ color: 'white', fontSize: '1.5rem', textAlign: 'center', lineHeight: '1.8', maxWidth: '800px' }}>
+            Let's practice first!<br/>
+            You'll do 2 practice squeezes:<br/>
+            • First to Dot 1 (low effort)<br/>
+            • Then to Dot 3 (high effort)<br/><br/>
+            The investigator will guide you through this.
+          </p>
+        </div>
+      )}
+
+      {!showConfig && experimentState === 'training-task' && (
+        <div style={{
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          height: '100vh',
+          padding: '50px 0'
+        }}>
+          <div style={{ 
+            color: '#FFD700',
+            fontSize: '1.8rem',
+            fontWeight: 'bold',
+            textTransform: 'uppercase',
+            letterSpacing: '2px'
+          }}>
+            PRACTICE
+          </div>
+          
+          <div style={{ color: 'white', fontSize: '2.5rem', fontWeight: 'bold' }}>
+            Squeeze to {targetDot}
+          </div>
+          
+          <div style={{
+            width: '500px',
+            height: '500px',
+            borderRadius: '50%',
+            overflow: 'hidden',
+            border: '3px solid #FFD700'
+          }}>
+            <CameraView 
+              camera="second" 
+              visible={true}
+              style={{ 
+                width: '100%',
+                height: '100%',
+                objectFit: 'cover'
+              }}
+            />
+          </div>
+          
+          {captureTimer && (
+            <div style={{ color: 'white', fontSize: '1.5rem' }}>
+              Hold for {captureTimer}...
+            </div>
+          )}
+          
+          <div style={{ color: '#FFD700', fontSize: '1.2rem' }}>
+            Practice Trial {(window.currentTrainingIndex || 0) + 1} of 2
+          </div>
+        </div>
+      )}
+      
+      {!showConfig && experimentState === 'training-rest' && (
+        <div style={{
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          justifyContent: 'center',
+          height: '100vh'
+        }}>
+          <div style={{ color: '#FFD700', fontSize: '4rem', fontWeight: 'bold' }}>
+            REST
+          </div>
+          <div style={{ color: 'white', fontSize: '1.5rem', marginTop: '20px' }}>
+            Get ready for the next practice
+          </div>
+        </div>
+      )}
+      
+      {!showConfig && experimentState === 'training-complete' && (
+        <div style={{
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          justifyContent: 'center',
+          height: '100vh',
+          gap: '40px'
+        }}>
+          <div style={{ color: '#00FF00', fontSize: '3rem', fontWeight: 'bold' }}>
+            Training Complete!
+          </div>
+          
+          <p style={{ color: 'white', fontSize: '1.5rem', textAlign: 'center', maxWidth: '800px' }}>
+            You've practiced both effort levels. How did that feel?<br/>
+            You can practice again if needed, or continue to the actual experiment.
+          </p>
+          
+          <div style={{
+            display: 'flex',
+            gap: '40px',
+            flexDirection: 'column'
+          }}>
+            <button
+              onClick={repeatTraining}
+              style={{
+                padding: '20px 60px',
+                fontSize: '1.5rem',
+                backgroundColor: 'rgba(255, 215, 0, 0.2)',
+                color: '#FFD700',
+                border: '2px solid #FFD700',
+                borderRadius: '10px',
+                cursor: 'pointer',
+                transition: 'background-color 0.3s'
+              }}
+              onMouseEnter={(e) => e.target.style.backgroundColor = 'rgba(255, 215, 0, 0.3)'}
+              onMouseLeave={(e) => e.target.style.backgroundColor = 'rgba(255, 215, 0, 0.2)'}
+            >
+              Practice Again
+            </button>
+            
+            <button
+              onClick={continueToExperiment}
+              style={{
+                padding: '20px 60px',
+                fontSize: '1.5rem',
+                backgroundColor: 'rgba(0, 255, 0, 0.2)',
+                color: '#00FF00',
+                border: '2px solid #00FF00',
+                borderRadius: '10px',
+                cursor: 'pointer',
+                transition: 'background-color 0.3s'
+              }}
+              onMouseEnter={(e) => e.target.style.backgroundColor = 'rgba(0, 255, 0, 0.3)'}
+              onMouseLeave={(e) => e.target.style.backgroundColor = 'rgba(0, 255, 0, 0.2)'}
+            >
+              Continue to Experiment
+            </button>
+          </div>
+          
+          <p style={{ color: '#888', fontSize: '1rem', textAlign: 'center' }}>
+            The investigator can help you decide which option to choose.
+          </p>
         </div>
       )}
 
